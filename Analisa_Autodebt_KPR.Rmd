@@ -1,0 +1,62 @@
+<h4>Loading Library</h4>
+
+```{r}
+library(tidyverse)
+library(pdftools)
+
+```
+
+Membaca kumpulan PDF file dalam sebuah Folder
+
+```{r}
+# Buat Variable Path
+pth <- paste0(getwd(),"/KPRS")
+pdf1 <- dir(pth, full.names = T) %>%
+  map(~pdf_text(.x)) %>% unlist %>% 
+  # Pemisah antara baris adalah character Carriage Return
+  str_split("\n")
+
+```
+
+Ambil item yang ada kata nota debet kemudian Ubah menjadi Vector
+
+```{r}
+pdf1_filt <-  unlist(pdf1)[(grep("nota debet|periode\\:",unlist(pdf1), ignore.case = TRUE))]
+pdf1_filt[1:6]
+```
+
+Jadikan Dataframe
+
+```{r}
+pdf1_df <- as.tibble(pdf1_filt) %>%
+  # Pisahkan Kolom Periode dengan Kolom Deskripsi
+  mutate(Periode = if_else(str_detect(value,"Periode"), value, NA_character_ ), .before = value) %>%
+  mutate(text1 = if_else(!str_detect(value,"Periode"), value, NA_character_ ), .before = value) %>%
+  # isi yang blank di kolom periode dengan kolom diatasnya
+  fill(Periode) %>%
+  # Hapus baris NA berdasarkan kolom text1
+  filter(!is.na(text1)) %>% select(-value) %>% 
+  # Pisahkan kolom menjadi 5 kolom berdasarkan pemisah antar kolom spasi lebih dari 2 characters
+  separate(text1, into = c("Trans Date", "Value Date",
+                           "Description", "Withdrawals",
+                           "Balance"),
+           sep = "\\s{2,}")  %>%
+  # Hilangkan koma dan jadikan Numerik
+  mutate(Withdrawals = as.numeric(str_replace_all(Withdrawals,",","")),
+         Balance = as.numeric(str_replace_all(Balance,",",""))) %>%
+  mutate(Tahun = str_sub(Periode,-4), .after=Periode)
+```
+
+Buatkan Summary Pertahun Total Sdh Jadi Berapa dengan Pembayaran 1,862,500
+
+```{r}
+pdf1_df %>% filter(Withdrawals==1862500) %>% count(Tahun,wt=Withdrawals) %>% janitor::adorn_totals()
+
+
+```
+
+```{r}
+format(1862500 * 240, scientific = FALSE, big.mark = ",")
+```
+
+
