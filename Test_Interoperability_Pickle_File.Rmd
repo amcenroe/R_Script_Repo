@@ -1,0 +1,33 @@
+```{python}
+import pandas as pd
+import numpy as np
+df = pd.DataFrame({'ID':['001','002',np.nan,'004'],
+'Name':['Jim', 'Nau', 'Klos','Axe'],
+'Date':['3/1/2020',np.nan,'4/5/2020','5/4/2020']} )
+
+df['Date'] = pd.to_datetime(df['Date'])
+df['Date2'] = df['Date'].dt.date
+# Save To Pickle
+df.to_pickle('~/Test.pkl')
+```
+
+
+```{r}
+library(reticulate)
+library(dplyr)
+library(purrr)
+pd <- import("pandas")
+df <- pd$read_pickle('~/Test.pkl')
+glimpse(df)
+df %>% select(Date2) %>% slice(1) %>% pull()
+#df %>% tidyr::unnest(Date2)
+df %>% mutate(Date2 = map(Date2, as.character ),
+              ID = map(ID, as.character)) %>% 
+  tidyr::unnest(Date2, ID) %>% glimpse()
+fn <- function(x){x %>% map(as.character)}
+df %>% mutate_if(is.list, fn) %>% tidyr::unnest(Date2, ID) %>% 
+  glimpse()
+
+```
+
+
